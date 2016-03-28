@@ -1,11 +1,12 @@
 package com.onarandombox.multiverseinventories.api.profile;
 
-import com.onarandombox.multiverseinventories.share.Shares;
+import com.onarandombox.multiverseinventories.api.share.Sharable;
+import com.onarandombox.multiverseinventories.api.share.Shares;
 import org.bukkit.World;
 import org.bukkit.event.EventPriority;
 
-import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Contains all the information related to a World Group as defined in the plugin's config.yml
@@ -25,7 +26,9 @@ public interface WorldGroupProfile extends ProfileContainer {
      * Sets the name of this World Group.
      *
      * @param name The new name for this World Group.
+     * @deprecated As this method is dangerous.
      */
+    @Deprecated
     void setName(String name);
 
     /**
@@ -77,17 +80,21 @@ public interface WorldGroupProfile extends ProfileContainer {
      *
      * @return The worlds of this World Group.
      */
-    HashSet<String> getWorlds();
+    Set<String> getWorlds();
 
     /**
-     * Sets the shares for this World Group.
+     * Checks if this group is sharing sharable.  This will check both shares and negative shares of the group.
+     * This is the preferred method for checking if a group shares something as shares may contain ALL shares while
+     * ones indicated in negative shares means those aren't actually shared.
      *
-     * @param shares The new Shares for this World Group.
+     * @param sharable Sharable to check if sharing.
+     * @return true is the sharable is shared for this group.
      */
-    void setShares(Shares shares);
+    boolean isSharing(Sharable sharable);
 
     /**
-     * Retrieves the shares for this World Group.
+     * Retrieves the shares for this World Group.  Any changes to this group must be subsequently saved to the data
+     * source for the changes to be permanent.
      *
      * @return The shares for this World Group.
      */
@@ -125,6 +132,15 @@ public interface WorldGroupProfile extends ProfileContainer {
      *                 this group's spawn location if there is one set.
      */
     void setSpawnPriority(EventPriority priority);
+
+    /**
+     * Is this a default group.
+     * 
+     * @return true if this is the default group.
+     */
+    boolean isDefault();
+    
+    //Set<ProfileType> getProfileTypes();
 
     // ItemBlacklist getItemBlacklist(String worldName);
 }

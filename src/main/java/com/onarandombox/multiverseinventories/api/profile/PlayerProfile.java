@@ -1,15 +1,15 @@
 package com.onarandombox.multiverseinventories.api.profile;
 
-import org.bukkit.Location;
+import com.onarandombox.multiverseinventories.api.share.Sharable;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
 
 /**
- * Interface for a PlayerProfile which controls all the world specific data for a player.
+ * Interface for a PlayerProfile which controls all the world/group specific data for a player.
+ * This represents what is saved/loaded to/from persistence.
  */
-public interface PlayerProfile {
+public interface PlayerProfile extends Cloneable {
 
     /**
      * @return A map containing all the player data to be saved to disk.
@@ -17,13 +17,14 @@ public interface PlayerProfile {
     Map<String, Object> serialize();
 
     /**
-     * @return The type of player.
+     * @return The container type of profile, a group or world.
      */
-    ProfileType getType();
+    ContainerType getContainerType();
 
     /**
-     * @return the Player associated with this player.
+     * @return The name of the container, world or group, containing this profile.
      */
+<<<<<<< HEAD
     OfflinePlayer getPlayer();
 
     /**
@@ -73,10 +74,14 @@ public interface PlayerProfile {
      * @param exp New exp for Profile.
      */
     void setExp(float exp);
+=======
+    String getContainerName();
+>>>>>>> refs/remotes/Multiverse/master
 
     /**
-     * @return The total exp of this Profile.
+     * @return the Player associated with this profile.
      */
+<<<<<<< HEAD
     Integer getTotalExperience();
 
     /**
@@ -109,36 +114,52 @@ public interface PlayerProfile {
      * @param foodLevel New food level for Profile.
      */
     void setFoodLevel(int foodLevel);
+=======
+    OfflinePlayer getPlayer();
+>>>>>>> refs/remotes/Multiverse/master
 
     /**
-     * @return The exhaustion of this Profile.
+     * @return The type of profile this object represents.
      */
-    Float getExhaustion();
+    ProfileType getProfileType();
 
     /**
-     * Sets the exhaustion for this Profile.
+     * Retrieves the profile's value of the {@link Sharable} passed in.
      *
+<<<<<<< HEAD
      * @param exhaustion New exhaustion for Profile.
      */
     void setExhaustion(float exhaustion);
 
     /**
      * @return The saturation of this Profile.
+=======
+     * @param sharable Represents the key for the data wanted from the profile.
+     * @param <T>      This indicates the type of return value to be expected.
+     * @return The value of the sharable for this profile.  Null if no value is set.
+>>>>>>> refs/remotes/Multiverse/master
      */
-    Float getSaturation();
+    <T> T get(Sharable<T> sharable);
 
     /**
-     * Sets the saturation for this Profile.
+     * Sets the profile's value for the {@link Sharable} passed in.
      *
+<<<<<<< HEAD
      * @param saturation New saturation for Profile.
      */
     void setSaturation(float saturation);
 
     /**
      * @return The bed spawn location of this Profile.
+=======
+     * @param sharable Represents the key for the data to store.
+     * @param value    The value of the data.
+     * @param <T>      The type of value to be expected.
+>>>>>>> refs/remotes/Multiverse/master
      */
-    Location getBedSpawnLocation();
+    <T> void set(Sharable<T> sharable, T value);
 
+<<<<<<< HEAD
     /**
      * Sets the bed spawn location for this Profile.
      *
@@ -161,5 +182,8 @@ public interface PlayerProfile {
     Integer getMaximumAir();
 
     void setMaximumAir(int maximumAir);
+=======
+    PlayerProfile clone() throws CloneNotSupportedException;
+>>>>>>> refs/remotes/Multiverse/master
 }
 

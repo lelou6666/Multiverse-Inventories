@@ -2,18 +2,19 @@ package com.onarandombox.multiverseinventories.command;
 
 import com.onarandombox.multiverseinventories.MultiverseInventories;
 import com.onarandombox.multiverseinventories.api.profile.WorldGroupProfile;
+import com.onarandombox.multiverseinventories.api.share.Sharables;
+import com.onarandombox.multiverseinventories.api.share.Shares;
 import com.onarandombox.multiverseinventories.locale.Message;
-import com.onarandombox.multiverseinventories.share.Sharable;
-import com.onarandombox.multiverseinventories.share.Sharables;
-import com.onarandombox.multiverseinventories.share.Shares;
 import com.onarandombox.multiverseinventories.util.Perm;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
 
 /**
- * The /mvi info Command.
+ * The /mvinv addshares Command.
+ * @deprecated Deprecated in favor of /mvinv group.
  */
+@Deprecated
 public class AddSharesCommand extends InventoriesCommand {
 
     public AddSharesCommand(MultiverseInventories plugin) {
@@ -34,20 +35,34 @@ public class AddSharesCommand extends InventoriesCommand {
     @Override
     public void runCommand(CommandSender sender, List<String> args) {
         Shares newShares;
+        Shares negativeShares;
         if (args.get(0).contains("all") || args.get(0).contains("everything") || args.get(0).contains("*")) {
             newShares = Sharables.allOf();
+            negativeShares = Sharables.noneOf();
+        } else if (args.get(0).contains("-all") || args.get(0).contains("-everything") || args.get(0).contains("-*")) {
+            negativeShares = Sharables.allOf();
+            newShares = Sharables.noneOf();
         } else {
+            negativeShares = Sharables.noneOf();
             newShares = Sharables.noneOf();
             String[] sharesString = args.get(0).split(",");
             for (String shareString : sharesString) {
-                Sharable sharable = Sharables.lookup(shareString);
-                if (sharable == null) {
-                    continue;
+                if (shareString.startsWith("-") && shareString.length() > 1) {
+                    Shares shares = Sharables.lookup(shareString.substring(1));
+                    if (shares == null) {
+                        continue;
+                    }
+                    negativeShares.setSharing(shares, true);
+                } else {
+                    Shares shares = Sharables.lookup(shareString);
+                    if (shares == null) {
+                        continue;
+                    }
+                    newShares.setSharing(shares, true);
                 }
-                newShares.setSharing(sharable, true);
             }
         }
-        if (newShares.isEmpty()) {
+        if (newShares.isEmpty() && negativeShares.isEmpty()) {
             this.messager.normal(Message.ERROR_NO_SHARES_SPECIFIED, sender, args.get(0));
             return;
         }
@@ -57,6 +72,8 @@ public class AddSharesCommand extends InventoriesCommand {
             return;
         }
         worldGroup.getShares().mergeShares(newShares);
+        worldGroup.getShares().removeAll(negativeShares);
+        this.plugin.getGroupManager().updateGroup(worldGroup);
         this.plugin.getMVIConfig().save();
         this.messager.normal(Message.NOW_SHARING, sender, worldGroup.getName(),
                 worldGroup.getShares().toString());

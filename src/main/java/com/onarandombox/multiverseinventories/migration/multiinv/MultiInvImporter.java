@@ -1,13 +1,14 @@
 package com.onarandombox.multiverseinventories.migration.multiinv;
 
+import com.dumptruckman.minecraft.util.Logging;
+import com.onarandombox.multiverseinventories.ProfileTypes;
 import com.onarandombox.multiverseinventories.api.Inventories;
+import com.onarandombox.multiverseinventories.api.profile.ContainerType;
 import com.onarandombox.multiverseinventories.api.profile.PlayerProfile;
-import com.onarandombox.multiverseinventories.api.profile.ProfileType;
 import com.onarandombox.multiverseinventories.api.profile.WorldGroupProfile;
+import com.onarandombox.multiverseinventories.api.share.Sharables;
 import com.onarandombox.multiverseinventories.migration.DataImporter;
 import com.onarandombox.multiverseinventories.migration.MigrationException;
-import com.onarandombox.multiverseinventories.share.Sharables;
-import com.onarandombox.multiverseinventories.util.Logging;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.OfflinePlayer;
@@ -70,9 +71,9 @@ public class MultiInvImporter implements DataImporter {
             WorldGroupProfile worldGroup = this.inventories.getGroupManager().getGroup(groupEntry.getValue());
             if (worldGroup == null) {
                 worldGroup = this.inventories.getGroupManager().newEmptyGroup(groupEntry.getValue());
-                worldGroup.setShares(Sharables.allOf());
+                worldGroup.getShares().mergeShares(Sharables.allOf());
                 Logging.info("Importing group: " + groupEntry.getValue());
-                this.inventories.getGroupManager().addGroup(worldGroup, false);
+                this.inventories.getGroupManager().updateGroup(worldGroup);
             }
             worldGroup.addWorld(groupEntry.getValue());
         }
@@ -90,7 +91,7 @@ public class MultiInvImporter implements DataImporter {
                 }
                 Logging.info("Processing MultiInv data for player: " + player.getName()
                         + " for group: " + groupName);
-                mergeData(player, playerFileLoader, groupName, ProfileType.GROUP);
+                mergeData(player, playerFileLoader, groupName, ContainerType.GROUP);
             }
             for (World world : Bukkit.getWorlds()) {
                 String worldName = world.getName();
@@ -101,7 +102,7 @@ public class MultiInvImporter implements DataImporter {
                 }
                 Logging.info("Processing MultiInv data for player: " + player.getName()
                         + " for world only: " + worldName);
-                mergeData(player, playerFileLoader, worldName, ProfileType.WORLD);
+                mergeData(player, playerFileLoader, worldName, ContainerType.WORLD);
             }
         }
 
@@ -110,31 +111,31 @@ public class MultiInvImporter implements DataImporter {
     }
 
     private void mergeData(OfflinePlayer player, MIPlayerFileLoader playerFileLoader,
-                           String dataName, ProfileType type) {
+                           String dataName, ContainerType type) {
         PlayerProfile playerProfile;
-        if (type.equals(ProfileType.GROUP)) {
+        if (type.equals(ContainerType.GROUP)) {
             WorldGroupProfile group = this.inventories.getGroupManager()
                     .getGroup(dataName);
             if (group == null) {
                 Logging.warning("Could not import player data for group: " + dataName);
                 return;
             }
-            playerProfile = group.getPlayerData(player);
+            playerProfile = group.getPlayerData(ProfileTypes.SURVIVAL, player);
         } else {
             playerProfile = this.inventories.getWorldManager()
-                    .getWorldProfile(dataName).getPlayerData(player);
+                    .getWorldProfile(dataName).getPlayerData(ProfileTypes.SURVIVAL, player);
         }
         MIInventoryInterface inventoryInterface =
                 playerFileLoader.getInventory(GameMode.SURVIVAL.toString());
-        playerProfile.setInventoryContents(inventoryInterface.getInventoryContents());
-        playerProfile.setArmorContents(inventoryInterface.getArmorContents());
-        playerProfile.setHealth(playerFileLoader.getHealth());
-        playerProfile.setSaturation(playerFileLoader.getSaturation());
-        playerProfile.setExp(playerFileLoader.getExperience());
-        playerProfile.setLevel(playerFileLoader.getLevel());
-        playerProfile.setTotalExperience(playerFileLoader.getTotalExperience());
-        playerProfile.setFoodLevel(playerFileLoader.getHunger());
-        this.inventories.getData().updatePlayerData(dataName, playerProfile);
+        playerProfile.set(Sharables.INVENTORY, inventoryInterface.getInventoryContents());
+        playerProfile.set(Sharables.ARMOR, inventoryInterface.getArmorContents());
+        playerProfile.set(Sharables.HEALTH, playerFileLoader.getHealth());
+        playerProfile.set(Sharables.SATURATION, playerFileLoader.getSaturation());
+        playerProfile.set(Sharables.EXPERIENCE, playerFileLoader.getExperience());
+        playerProfile.set(Sharables.TOTAL_EXPERIENCE, playerFileLoader.getTotalExperience());
+        playerProfile.set(Sharables.LEVEL, playerFileLoader.getLevel());
+        playerProfile.set(Sharables.FOOD_LEVEL, playerFileLoader.getHunger());
+        this.inventories.getData().updatePlayerData(playerProfile);
     }
 
     /**

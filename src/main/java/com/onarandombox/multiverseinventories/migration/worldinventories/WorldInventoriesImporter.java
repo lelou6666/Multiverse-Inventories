@@ -1,14 +1,15 @@
 package com.onarandombox.multiverseinventories.migration.worldinventories;
 
+import com.dumptruckman.minecraft.util.Logging;
+import com.onarandombox.multiverseinventories.ProfileTypes;
 import com.onarandombox.multiverseinventories.api.Inventories;
 import com.onarandombox.multiverseinventories.api.profile.PlayerProfile;
 import com.onarandombox.multiverseinventories.api.profile.ProfileContainer;
 import com.onarandombox.multiverseinventories.api.profile.WorldGroupProfile;
 import com.onarandombox.multiverseinventories.api.profile.WorldProfile;
+import com.onarandombox.multiverseinventories.api.share.Sharables;
 import com.onarandombox.multiverseinventories.migration.DataImporter;
 import com.onarandombox.multiverseinventories.migration.MigrationException;
-import com.onarandombox.multiverseinventories.share.Sharables;
-import com.onarandombox.multiverseinventories.util.Logging;
 import me.drayshak.WorldInventories.Group;
 import me.drayshak.WorldInventories.WIPlayerInventory;
 import me.drayshak.WorldInventories.WIPlayerStats;
@@ -125,18 +126,18 @@ public class WorldInventoriesImporter implements DataImporter {
 
             try {
                 if (WorldInventories.doStats) {
-                    newGroup.setShares(Sharables.allOf());
+                    newGroup.getShares().mergeShares(Sharables.allOf());
                 } else {
-                    newGroup.getShares().setSharing(Sharables.INVENTORY, true);
+                    newGroup.getShares().setSharing(Sharables.ALL_INVENTORY, true);
                 }
             } catch (Exception ignore) {
                 Logging.warning("Group '" + wiGroup.getName() + "' unable to import fully, sharing only inventory.");
-                newGroup.getShares().setSharing(Sharables.INVENTORY, true);
+                newGroup.getShares().setSharing(Sharables.ALL_INVENTORY, true);
             } catch (Error e) {
                 Logging.warning("Group '" + wiGroup.getName() + "' unable to import fully, sharing only inventory.");
-                newGroup.getShares().setSharing(Sharables.INVENTORY, true);
+                newGroup.getShares().setSharing(Sharables.ALL_INVENTORY, true);
             }
-            this.inventories.getGroupManager().addGroup(newGroup, true);
+            this.inventories.getGroupManager().updateGroup(newGroup);
             Logging.info("Created Multiverse-Inventories group: " + wiGroup.getName());
         }
     }
@@ -154,22 +155,22 @@ public class WorldInventoriesImporter implements DataImporter {
     }
 
     private void transferData(OfflinePlayer player, Group wiGroup, ProfileContainer profileContainer) {
-        PlayerProfile playerProfile = profileContainer.getPlayerData(player);
+        PlayerProfile playerProfile = profileContainer.getPlayerData(ProfileTypes.SURVIVAL, player);
         WIPlayerInventory wiInventory = this.loadPlayerInventory(player, wiGroup);
         WIPlayerStats wiStats = this.loadPlayerStats(player, wiGroup);
         if (wiInventory != null) {
-            playerProfile.setInventoryContents(wiInventory.getItems());
-            playerProfile.setArmorContents(wiInventory.getArmour());
+            playerProfile.set(Sharables.INVENTORY, wiInventory.getItems());
+            playerProfile.set(Sharables.ARMOR, wiInventory.getArmour());
         }
         if (wiStats != null) {
-            playerProfile.setHealth(wiStats.getHealth());
-            playerProfile.setSaturation(wiStats.getSaturation());
-            playerProfile.setExp(wiStats.getExp());
-            playerProfile.setLevel(wiStats.getLevel());
-            playerProfile.setExhaustion(wiStats.getExhaustion());
-            playerProfile.setFoodLevel(wiStats.getFoodLevel());
+            playerProfile.set(Sharables.HEALTH, (double) wiStats.getHealth());
+            playerProfile.set(Sharables.SATURATION, wiStats.getSaturation());
+            playerProfile.set(Sharables.EXPERIENCE, wiStats.getExp());
+            playerProfile.set(Sharables.LEVEL, wiStats.getLevel());
+            playerProfile.set(Sharables.EXHAUSTION, wiStats.getExhaustion());
+            playerProfile.set(Sharables.FOOD_LEVEL, wiStats.getFoodLevel());
         }
-        this.inventories.getData().updatePlayerData(profileContainer.getDataName(), playerProfile);
+        this.inventories.getData().updatePlayerData(playerProfile);
         Logging.finest("Player's data imported successfully for group: " + profileContainer.getDataName());
     }
 
@@ -257,6 +258,9 @@ public class WorldInventoriesImporter implements DataImporter {
         return playerstats;
     }
 
+    /**
+     * Indicates the type of data we're importing for.
+     */
     private enum DataType {
         INVENTORY(".inventory"),
         STATS(".stats");

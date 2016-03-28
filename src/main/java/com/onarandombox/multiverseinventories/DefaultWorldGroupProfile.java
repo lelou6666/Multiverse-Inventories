@@ -1,13 +1,14 @@
 package com.onarandombox.multiverseinventories;
 
+import com.dumptruckman.minecraft.util.Logging;
 import com.google.common.collect.Lists;
 import com.onarandombox.multiverseinventories.api.Inventories;
-import com.onarandombox.multiverseinventories.api.profile.ProfileType;
+import com.onarandombox.multiverseinventories.api.profile.ContainerType;
 import com.onarandombox.multiverseinventories.api.profile.WorldGroupProfile;
-import com.onarandombox.multiverseinventories.share.Sharables;
-import com.onarandombox.multiverseinventories.share.Shares;
+import com.onarandombox.multiverseinventories.api.share.Sharable;
+import com.onarandombox.multiverseinventories.api.share.Sharables;
+import com.onarandombox.multiverseinventories.api.share.Shares;
 import com.onarandombox.multiverseinventories.util.DeserializationException;
-import com.onarandombox.multiverseinventories.util.Logging;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
@@ -17,45 +18,63 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Implementation of WorldGroupProfile.
  */
 class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGroupProfile {
+    static final String DEFAULT_GROUP_NAME = "default";
 
-    private String name = "";
+    private final String name;
+    private final HashSet<String> worlds = new HashSet<String>();
+    private final Shares shares = Sharables.noneOf();
+
     private String spawnWorld = null;
     private EventPriority spawnPriority = EventPriority.NORMAL;
-    private HashSet<String> worlds = new HashSet<String>();
-    private Shares shares = Sharables.noneOf();
-    //private HashMap<String, ItemBlacklist> itemBlacklist = new HashMap<String, ItemBlacklist>();
 
-    public DefaultWorldGroupProfile(Inventories inventories, String name) {
-        super(inventories, ProfileType.GROUP);
+    public DefaultWorldGroupProfile(final Inventories inventories, final String name) {
+        super(inventories, ContainerType.GROUP);
         this.name = name;
     }
 
-    public DefaultWorldGroupProfile(Inventories inventories, String name,
-                                    Map<String, Object> dataMap) throws DeserializationException {
+    public DefaultWorldGroupProfile(final Inventories inventories, final String name,
+                                    final Map<String, Object> dataMap) throws DeserializationException {
         this(inventories, name);
-        if (!dataMap.containsKey("worlds")) {
-            throw new DeserializationException("No worlds specified for world group: " + name);
-        }
-        Object worldListObj = dataMap.get("worlds");
-        if (!(worldListObj instanceof List)) {
-            throw new DeserializationException("World list formatted incorrectly for world group: " + name);
-        }
-        for (Object worldNameObj : (List) worldListObj) {
-            this.addWorld(worldNameObj.toString(), false);
-            World world = Bukkit.getWorld(worldNameObj.toString());
-            if (world == null) {
-                Logging.warning("World: " + worldNameObj.toString() + " is not loaded.");
+        if (dataMap.containsKey("worlds")) {
+            Object worldListObj = dataMap.get("worlds");
+            if (worldListObj == null) {
+                Logging.fine("No worlds for group: " + name);
+            } else {
+                if (!(worldListObj instanceof List)) {
+                    Logging.fine("World list formatted incorrectly for world group: " + name);
+                } else {
+                    final StringBuilder builder = new StringBuilder();
+                    for (Object worldNameObj : (List) worldListObj) {
+                        if (worldNameObj == null) {
+                            Logging.fine("Error with a world listed in group: " + name);
+                            continue;
+                        }
+                        this.addWorld(worldNameObj.toString(), false);
+                        World world = Bukkit.getWorld(worldNameObj.toString());
+                        if (world == null) {
+                            if (builder.length() != 0) {
+                                builder.append(", ");
+                            }
+                            builder.append(worldNameObj.toString());
+                        }
+                    }
+                    if (builder.length() > 0) {
+                        Logging.config("The following worlds for group '%s' are not loaded: %s", name, builder.toString());
+                    }
+                }
             }
         }
         if (dataMap.containsKey("shares")) {
             Object sharesListObj = dataMap.get("shares");
             if (sharesListObj instanceof List) {
-                this.setShares(Sharables.fromList((List) sharesListObj));
+                this.getShares().mergeShares(Sharables.fromList((List) sharesListObj));
+                this.getShares().removeAll(Sharables.negativeFromList((List) sharesListObj));
             } else {
                 Logging.warning("Shares formatted incorrectly for group: " + name);
             }
@@ -126,9 +145,8 @@ class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGrou
      * {@inheritDoc}
      */
     @Override
-    public void setName(String name) {
-        this.name = name;
-    }
+    @Deprecated
+    public void setName(String name) { }
 
     /**
      * {@inheritDoc}
@@ -143,9 +161,9 @@ class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGrou
      */
     @Override
     public void addWorld(String worldName, boolean updateConfig) {
-        this.getWorlds().add(worldName);
+        this.getWorlds().add(worldName.toLowerCase());
         if (updateConfig) {
-            this.getInventories().getMVIConfig().updateWorldGroup(this);
+            getInventories().getGroupManager().updateGroup(this);
         }
     }
 
@@ -170,9 +188,9 @@ class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGrou
      */
     @Override
     public void removeWorld(String worldName, boolean updateConfig) {
-        this.getWorlds().remove(worldName);
+        this.getWorlds().remove(worldName.toLowerCase());
         if (updateConfig) {
-            this.getInventories().getMVIConfig().updateWorldGroup(this);
+            getInventories().getGroupManager().updateGroup(this);
         }
     }
 
@@ -188,17 +206,13 @@ class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGrou
      * {@inheritDoc}
      */
     @Override
-    public HashSet<String> getWorlds() {
+    public Set<String> getWorlds() {
         return this.worlds;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void setShares(Shares shares) {
-        this.shares = shares;
-        this.getInventories().getMVIConfig().updateWorldGroup(this);
+    public boolean isSharing(Sharable sharable) {
+        return getShares().isSharing(sharable);
     }
 
     /**
@@ -214,7 +228,7 @@ class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGrou
      */
     @Override
     public boolean containsWorld(String worldName) {
-        return this.getWorlds().contains(worldName);
+        return this.getWorlds().contains(worldName.toLowerCase());
     }
 
     /**
@@ -258,7 +272,7 @@ class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGrou
      */
     @Override
     public void setSpawnWorld(String worldName) {
-        this.spawnWorld = worldName;
+        this.spawnWorld = worldName.toLowerCase();
     }
 
     /**
@@ -276,6 +290,21 @@ class DefaultWorldGroupProfile extends WeakProfileContainer implements WorldGrou
     public void setSpawnPriority(EventPriority priority) {
         this.spawnPriority = priority;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isDefault() {
+        return DEFAULT_GROUP_NAME.equals(getName());
+    }
+
+    /*
+    @Override
+    public Set<ProfileType> getProfileTypes() {
+        return this.profileTypes;
+    }
+    */
 
     /*
     protected HashMap<String, ItemBlacklist> getItemBlacklist() {

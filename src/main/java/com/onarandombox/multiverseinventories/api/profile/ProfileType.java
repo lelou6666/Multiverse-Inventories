@@ -1,18 +1,18 @@
 package com.onarandombox.multiverseinventories.api.profile;
 
 /**
- * A Enum for getting/updating profiles by their type.  Which reduces the need to use multiple methods
- * for the same thing.
+ * This class represents the configuration for a type of profile used with multiple profiles per world/group.
  */
-public enum ProfileType {
+public interface ProfileType {
 
     /**
-     * Indicates World type profiles.
+     * @return The name of the profile.  The default profile type will return a blank string.
      */
-    WORLD,
+    String getName();
+
     /**
-     * Indicates Group type profiles.
+     * @return The {@link com.onarandombox.multiverseinventories.api.share.Sharable}s this Profile will handle.
+     * When not set up in the config, this should return {@link com.onarandombox.multiverseinventories.api.share.Sharables#allOf()}
      */
-    GROUP;
+    //Shares getShares();
 }
-

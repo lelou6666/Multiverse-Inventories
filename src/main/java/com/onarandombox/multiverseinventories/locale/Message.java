@@ -31,7 +31,7 @@ public enum Message {
     ERROR_DATA_LOAD("Encountered an error while loading the data file.  Disabling..."),
     ERROR_NO_GROUP("&6There is no group with the name: &f%1"),
     ERROR_NO_WORLD("&6There is no world with the name: &f%1"),
-    ERROR_NO_WORLD_PROFILE("&6There is no world player for the world: &f%1"),
+    ERROR_NO_WORLD_PROFILE("&6There is no world profile for the world: &f%1"),
     ERROR_PLUGIN_NOT_ENABLED("&f%1 &6is not enabled so you may not import data from it!"),
     ERROR_UNSUPPORTED_IMPORT("&6Sorry, ''&f%1&6'' is not supported for importing."),
     ERROR_NO_SHARES_SPECIFIED("&cYou did not specify any valid shares!"),
@@ -43,11 +43,28 @@ public enum Message {
     CONFLICT_NOT_FOUND("No group conflicts found!"),
 
     //// Commands
+    NON_CONVERSABLE("You are not allowed to access conversations (remote console?)"),
+    INVALID_PROMPT_OPTION("&cThat is not a valid option! Type &f##&c to stop working on groups."),
     // Info Command
+    INFO_ZERO_ARG("You may only use the no argument version of this command in game!"),
     INFO_WORLD("&b===[ Info for world: &6%1&b ]==="),
     INFO_WORLD_INFO("&6Groups:&f %1"),
     INFO_GROUP("&b===[ Info for group: &6%1&b ]==="),
-    INFO_GROUP_INFO("&6Worlds:&f %1", "&bShares:&f %2"),
+    INFO_GROUPS_INFO("&6Worlds:&f %1", "&bShares:&f %2"),
+    // Group Command
+    GROUP_COMMAND_PROMPT("&6What would you like to do? &fCreate&6, &fEdit &6or &fDelete&6.  Enter &f##&6 at any time to cancel."),
+    GROUP_CREATE_PROMPT("&6Please name your new group: "),
+    GROUP_EDIT_PROMPT("&6Edit which group? %1"),
+    GROUP_DELETE_PROMPT("&6Delete which group? %1"),
+    GROUP_MODIFY_PROMPT("&6Which would you like to change for &e%1&6? &fWorlds &6or &fShares&6.  Enter &f##&6 to finish."),
+    GROUP_WORLDS_PROMPT("&6Enter the name of a world to add to group &f%1&6 or enter &f@&6 to continue.  To worlds by precede the name with the minus symbol. (ex: &f-worldname&6).  Current worlds: %2"),
+    GROUP_SHARES_PROMPT("&6Enter &fall&6 or a specific share to add to group &f%1&6 or enter &f@&6 to continue.  To remove shares precede the name with the minus symbol (ex: &f-inventory&6).  Current shares: %2"),
+    GROUP_INVALID_NAME("&cThat name is not valid!  May only contain letters, numbers, and underscores."),
+    GROUP_EXISTS("&cThat group already exists! (&f%1&c)"),
+    GROUP_REMOVED("&2Removed group: &f%1"),
+    GROUP_WORLDS_EMPTY("&cYou may not have a group with no worlds, please add worlds or type &f##&c to cancel."),
+    GROUP_CREATION_COMPLETE("&2You created a new group!"),
+    GROUP_UPDATED("&2Group has been updated!"),
     // List Command
     LIST_GROUPS("&b===[ Group List ]===", "&6Groups:&f %1"),
     // Reload Command
@@ -66,7 +83,11 @@ public enum Message {
     TELEPORT_CONSOLE_ERROR("From the console, you must provide a PLAYER"),
     // DebugCommand
     INVALID_DEBUG("&fInvalid debug level.  Please use number 0-3.  &b(3 being many many messages!)"),
-    DEBUG_SET("Debug mode is %1");
+    DEBUG_SET("Debug mode is %1"),
+    // Toggle Command
+    NOW_USING_OPTIONAL("&f%1 &6will now be considered when player's change world."),
+    NOW_NOT_USING_OPTIONAL("&f%1 &6will no longer be considered when player's change world."),
+    NO_OPTIONAL_SHARES("&f%1 &6is not an optional share!");
 
     // BEGIN CHECKSTYLE-SUPPRESSION: Javadoc
 

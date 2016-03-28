@@ -1,6 +1,7 @@
 package com.onarandombox.multiverseinventories.api;
 
 import com.onarandombox.multiverseinventories.api.profile.WorldGroupProfile;
+import com.onarandombox.multiverseinventories.api.share.Shares;
 
 import java.util.List;
 
@@ -34,7 +35,10 @@ public interface InventoriesConfig {
      * Retrieves the list of groups set up in the config.
      *
      * @return List of world groups or null if there are none.
+     * @deprecated World groups have been migrated out of the config and out of the InventoriesConfig class into
+     *             {@link GroupManager}
      */
+    @Deprecated
     List<WorldGroupProfile> getWorldGroups();
 
     /**
@@ -42,14 +46,20 @@ public interface InventoriesConfig {
      * ConfigurationSection in the config if one does not exist.
      *
      * @param worldGroup Group to update.
+     * @deprecated World groups have been migrated out of the config and out of the InventoriesConfig class into
+     *             {@link GroupManager}
      */
+    @Deprecated
     void updateWorldGroup(WorldGroupProfile worldGroup);
 
     /**
      * Removes the specified world group in the config.
      *
      * @param worldGroup Group to remove.
+     * @deprecated World groups have been migrated out of the config and out of the InventoriesConfig class into
+     *             {@link GroupManager}
      */
+    @Deprecated
     void removeWorldGroup(WorldGroupProfile worldGroup);
 
     /**
@@ -67,8 +77,75 @@ public interface InventoriesConfig {
     void setFirstRun(boolean firstRun);
 
     /**
-     * Convenience method for saving the config to disk.
+     * @return true if worlds with no group should be considered part of the default group.
      */
+    boolean isDefaultingUngroupedWorlds();
+
+    /**
+     * @param useDefaultGroup Set this to true to use the default group for ungrouped worlds.
+     */
+    void setDefaultingUngroupedWorlds(boolean useDefaultGroup);
+
+    /**
+     * Tells whether Multiverse-Inventories should save on player logout and load on player login.
+     *
+     * @return True if should save and load on player log out and in.
+     */
+    boolean usingLoggingSaveLoad();
+
+    /**
+     * Sets whether Multiverse-Inventories should save on player logout and load on player login.
+     *
+     * @param useLoggingSaveLoad true if should save and load on player log out and in.
+     */
+    void setUsingLoggingSaveLoad(boolean useLoggingSaveLoad);
+
+    /**
+     * Whether Multiverse-Inventories will utilize optional shares in worlds that are not grouped.
+     *
+     * @return true if should utilize optional shares in worlds that are not grouped.
+     */
+    boolean usingOptionalsForUngrouped();
+
+    /**
+     * Sets whether Multiverse-Inventories will utilize optional shares in worlds that are not grouped.
+     *
+     * @param usingOptionalsForUngrouped true if should utilize optional shares in worlds that are not grouped.
+     */
+    void setUsingOptionalsForUngrouped(final boolean usingOptionalsForUngrouped);
+
+    /**
+     * Saves the configuration file to disk.
+     */
+    // TODO remove need for this method.
     void save();
+
+    /**
+     * @return A list of optional {@link com.onarandombox.multiverseinventories.api.share.Sharable}s to be treated as
+     *         regular {@link com.onarandombox.multiverseinventories.api.share.Sharable}s throughout the code.
+     *         A {@link com.onarandombox.multiverseinventories.api.share.Sharable} marked as optional is ignored if it is not
+     *         contained in this list.
+     */
+    Shares getOptionalShares();
+
+    /**
+     * @return True if we should check for bypass permissions.
+     */
+    boolean isUsingBypass();
+
+    /**
+     * @param useBypass Whether or not to check for bypass permissions.
+     */
+    void setUsingBypass(boolean useBypass);
+
+    /**
+     * @return True if using separate data for game modes.
+     */
+    boolean isUsingGameModeProfiles();
+
+    /**
+     * @param useGameModeProfile whether to use separate data for game modes.
+     */
+    void setUsingGameModeProfiles(boolean useGameModeProfile);
 }
 

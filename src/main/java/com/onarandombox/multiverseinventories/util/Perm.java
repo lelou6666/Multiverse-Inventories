@@ -1,12 +1,16 @@
 package com.onarandombox.multiverseinventories.util;
 
+<<<<<<< HEAD
+=======
+import com.dumptruckman.minecraft.util.Logging;
+import com.onarandombox.multiverseinventories.api.Inventories;
+>>>>>>> refs/remotes/Multiverse/master
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.PluginManager;
-import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Permissions enum for Multiverse-Inventories.
@@ -29,6 +33,11 @@ public enum Perm {
      */
     COMMAND_IMPORT(new Permission("multiverse.inventories.import", "Imports data from MultiInv/WorldInventories", PermissionDefault.OP)),
     /**
+     * Permission for /mvinv group.
+     */
+    COMMAND_GROUP(new Permission("multiverse.inventories.group", "Begins a conversation about groups.",
+            PermissionDefault.OP)),
+    /**
      * Permission for /mvinv addworld.
      */
     COMMAND_ADDWORLD(new Permission("multiverse.inventories.addworld", "Adds a world to a world group",
@@ -44,7 +53,7 @@ public enum Perm {
     COMMAND_ADDSHARES(new Permission("multiverse.inventories.addshares", "Adds share(s) to a world group",
             PermissionDefault.OP)),
     /**
-     * Permission for /mvinv addshare.
+     * Permission for /mvinv rmshare.
      */
     COMMAND_RMSHARES(new Permission("multiverse.inventories.removeshares", "Removes share(s) from a world group",
             PermissionDefault.OP)),
@@ -85,7 +94,12 @@ public enum Perm {
         private String getBypassMessage(Player player, String name) {
             return "Player: " + player.getName() + " has bypass perms for world: " + name;
         }
-    };
+    },
+    /**
+     * Permissions for bypassing all world/groups inventory handling.
+     */
+    BYPASS_ALL(new Permission("mvinv.bypass.*", "Allows bypassing all of your groups/worlds and constantly use "
+            + "the same inventory", PermissionDefault.FALSE));
 
     private Permission perm = null;
     private String permNode = "";
@@ -113,7 +127,7 @@ public enum Perm {
     }
 
     /**
-     * @param finalNode    String to add to the bypass prefix.
+     * @param finalNode String to add to the bypass prefix.
      * @return The full permission node for bypass.
      */
     public Permission getBypassPermission(String finalNode) {
@@ -123,6 +137,15 @@ public enum Perm {
         Permission permission = Bukkit.getPluginManager().getPermission(bypassNode);
         if (permission == null) {
             permission = new Permission(bypassNode, PermissionDefault.FALSE);
+            switch (this) {
+                case BYPASS_GROUP:
+                    permission.addParent(BYPASS_GROUP_ALL.getPermission(), true);
+                    break;
+                case BYPASS_WORLD:
+                    permission.addParent(BYPASS_WORLD_ALL.getPermission(), true);
+                    break;
+                default:
+            }
             Bukkit.getPluginManager().addPermission(permission);
         }
         return permission;
@@ -132,17 +155,16 @@ public enum Perm {
      * Checks if a player has permission to bypass something which requires a name of an object to be bypassed.
      * A World name for example.
      *
-     * @param player       Player to check permission for.
-     * @param name         Name of object to bypass.
+     * @param player Player to check permission for.
+     * @param name   Name of object to bypass.
      * @return True if player is allowed to bypass.
      */
     public boolean hasBypass(Player player, String name) {
+        if (inventories != null && !inventories.getMVIConfig().isUsingBypass()) {
+            return false;
+        }
         Permission bypassPerm = this.getBypassPermission(name);
         boolean hasBypass = player.hasPermission(bypassPerm);
-        if (!hasBypass) {
-            bypassPerm = this.getBypassPermission("*");
-            hasBypass = player.hasPermission(bypassPerm);
-        }
         if (hasBypass) {
             Logging.fine("Player: " + player.getName() + " in World: " + player.getWorld().getName()
                     + " has permission: " + bypassPerm.getName() + "(Default: "
@@ -161,12 +183,17 @@ public enum Perm {
         return sender.hasPermission(perm);
     }
 
+    private static Inventories inventories = null;
+
     /**
      * Registers all Permission to the plugin.
      *
      * @param plugin Plugin to register permissions to.
      */
-    public static void register(JavaPlugin plugin) {
+    public static void register(Inventories plugin) {
+        inventories = plugin;
+        BYPASS_WORLD_ALL.getPermission().addParent(BYPASS_ALL.getPermission(), true);
+        BYPASS_GROUP_ALL.getPermission().addParent(BYPASS_ALL.getPermission(), true);
         PluginManager pm = plugin.getServer().getPluginManager();
         for (Perm perm : Perm.values()) {
             if (perm.getPermission() != null) {

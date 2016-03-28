@@ -2,18 +2,20 @@ package com.onarandombox.multiverseinventories.command;
 
 import com.onarandombox.multiverseinventories.MultiverseInventories;
 import com.onarandombox.multiverseinventories.api.profile.WorldGroupProfile;
+import com.onarandombox.multiverseinventories.api.share.Sharable;
+import com.onarandombox.multiverseinventories.api.share.Sharables;
+import com.onarandombox.multiverseinventories.api.share.Shares;
 import com.onarandombox.multiverseinventories.locale.Message;
-import com.onarandombox.multiverseinventories.share.Sharable;
-import com.onarandombox.multiverseinventories.share.Sharables;
-import com.onarandombox.multiverseinventories.share.Shares;
 import com.onarandombox.multiverseinventories.util.Perm;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;
 
 /**
- * The /mvi info Command.
+ * The /mvinv rmshares Command.
+ * @deprecated Deprecated in favor of /mvinv group.
  */
+@Deprecated
 public class RemoveSharesCommand extends InventoriesCommand {
 
     public RemoveSharesCommand(MultiverseInventories plugin) {
@@ -22,7 +24,7 @@ public class RemoveSharesCommand extends InventoriesCommand {
         this.setCommandUsage("/mvinv removeshares {SHARE[,EXTRA]} {GROUP}");
         this.setArgRange(2, 2);
         this.addKey("mvinv removeshares");
-        this.addKey("mvinv rmhares");
+        this.addKey("mvinv rmshares");
         this.addKey("mvinv removeshare");
         this.addKey("mvinv rmshare");
         this.addKey("mvinv removes");
@@ -46,11 +48,11 @@ public class RemoveSharesCommand extends InventoriesCommand {
             newShares = Sharables.noneOf();
             String[] sharesString = args.get(0).split(",");
             for (String shareString : sharesString) {
-                Sharable sharable = Sharables.lookup(shareString);
-                if (sharable == null) {
+                Shares shares = Sharables.lookup(shareString);
+                if (shares == null) {
                     continue;
                 }
-                newShares.setSharing(sharable, true);
+                newShares.setSharing(shares, true);
             }
         }
         if (newShares.isEmpty()) {
@@ -65,6 +67,7 @@ public class RemoveSharesCommand extends InventoriesCommand {
         for (Sharable sharable : newShares) {
             worldGroup.getShares().setSharing(sharable, false);
         }
+        this.plugin.getGroupManager().updateGroup(worldGroup);
         this.plugin.getMVIConfig().save();
         this.messager.normal(Message.NOW_SHARING, sender, worldGroup.getName(),
                 worldGroup.getShares().toString());

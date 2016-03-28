@@ -2,8 +2,11 @@ package com.onarandombox.multiverseinventories.api;
 
 import com.onarandombox.MultiverseCore.api.MVPlugin;
 import com.onarandombox.multiverseinventories.api.profile.PlayerData;
+import com.onarandombox.multiverseinventories.api.profile.ProfileTypeManager;
+import com.onarandombox.multiverseinventories.api.profile.WorldProfileManager;
 import com.onarandombox.multiverseinventories.locale.Messaging;
 import com.onarandombox.multiverseinventories.migration.ImportManager;
+import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 
@@ -11,7 +14,7 @@ import java.io.File;
  * Interface for Multiverse-Inventories main class which contains many methods useful
  * for outside plugins wanting to interact with Multiverse-Inventories.
  */
-public interface Inventories extends MVPlugin, Messaging {
+public interface Inventories extends MVPlugin, Messaging, Plugin {
 
     /**
      * @return A class used for managing importing data from other similar plugins.
@@ -49,7 +52,8 @@ public interface Inventories extends MVPlugin, Messaging {
     GroupManager getGroupManager();
 
     /**
-     * @return The Profile manager for this plugin.
+     * @return The World/Group Profile manager for this plugin.
+     * This is where you find access to individual player data.
      */
     WorldProfileManager getWorldManager();
 
@@ -66,4 +70,10 @@ public interface Inventories extends MVPlugin, Messaging {
      * @param newServerFolder The new server-root
      */
     void setServerFolder(File newServerFolder);
+
+    /**
+     * @return The ProfileType manager which will manage loading all profile types and retrieving the different types
+     * from memory.
+     */
+    ProfileTypeManager getProfileTypeManager();
 }

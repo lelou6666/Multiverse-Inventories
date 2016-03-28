@@ -1,77 +1,33 @@
 package com.onarandombox.multiverseinventories;
 
+import com.dumptruckman.minecraft.util.Logging;
 import com.onarandombox.multiverseinventories.api.Inventories;
+import com.onarandombox.multiverseinventories.api.profile.ContainerType;
 import com.onarandombox.multiverseinventories.api.profile.PlayerProfile;
 import com.onarandombox.multiverseinventories.api.profile.ProfileContainer;
-import com.onarandombox.multiverseinventories.api.profile.WorldGroupProfile;
-import com.onarandombox.multiverseinventories.api.profile.WorldProfile;
-import com.onarandombox.multiverseinventories.share.Sharable;
-import com.onarandombox.multiverseinventories.share.Sharables;
-import com.onarandombox.multiverseinventories.share.Shares;
-import com.onarandombox.multiverseinventories.util.Logging;
-import com.onarandombox.multiverseinventories.util.Perm;
-import org.bukkit.World;
+import com.onarandombox.multiverseinventories.api.share.PersistingProfile;
+import com.onarandombox.multiverseinventories.api.share.Sharable;
+import com.onarandombox.multiverseinventories.api.share.Shares;
+import com.onarandombox.multiverseinventories.event.MVInventoryHandlingEvent;
+import com.onarandombox.multiverseinventories.event.MVInventoryHandlingEvent.Cause;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Simple implementation of ShareHandler.
+ * Abstract class for handling sharing of data between worlds and game modes.
  */
-final class ShareHandler {
+abstract class ShareHandler {
 
-    private List<PersistingProfile> fromProfiles;
-    private List<PersistingProfile> toProfiles;
-    private Player player;
-    private World fromWorld;
-    private World toWorld;
-    private Inventories inventories;
-    private boolean hasBypass = false;
+    protected final MVInventoryHandlingEvent event;
+    protected final Inventories inventories;
+    protected boolean hasBypass = false;
 
-    public ShareHandler(Inventories inventories, Player player,
-                        World fromWorld, World toWorld) {
-        this.fromProfiles = new ArrayList<PersistingProfile>();
-        this.toProfiles = new ArrayList<PersistingProfile>();
-        this.player = player;
-        this.fromWorld = fromWorld;
-        this.toWorld = toWorld;
+    public ShareHandler(Inventories inventories, Player player, Cause cause,
+                        String fromWorld, String toWorld,
+                        GameMode fromGameMode, GameMode toGameMode) {
+        this.event = new MVInventoryHandlingEvent(player, cause, fromWorld, toWorld, fromGameMode, toGameMode);
         this.inventories = inventories;
-    }
-
-    /**
-     * @return The profiles for the world/groups the player is coming from.
-     */
-    public List<PersistingProfile> getFromProfiles() {
-        return this.fromProfiles;
-    }
-
-    /**
-     * @return The profiles for the world/groups the player is going to.
-     */
-    public List<PersistingProfile> getToProfiles() {
-        return this.toProfiles;
-    }
-
-    /**
-     * @return The world travelling from.
-     */
-    public World getFromWorld() {
-        return this.fromWorld;
-    }
-
-    /**
-     * @return The world travelling to.
-     */
-    public World getToWorld() {
-        return this.toWorld;
-    }
-
-    /**
-     * @return The player involved in this sharing transaction.
-     */
-    public Player getPlayer() {
-        return this.player;
     }
 
     /**
@@ -79,8 +35,8 @@ final class ShareHandler {
      * @param shares    What from this group needs to be saved.
      * @param profile   The player player that will need data saved to.
      */
-    public void addFromProfile(ProfileContainer container, Shares shares, PlayerProfile profile) {
-        this.getFromProfiles().add(new DefaultPersistingProfile(container.getDataName(), shares, profile));
+    public final void addFromProfile(ProfileContainer container, Shares shares, PlayerProfile profile) {
+        event.getFromProfiles().add(new DefaultPersistingProfile(shares, profile));
     }
 
     /**
@@ -88,126 +44,123 @@ final class ShareHandler {
      * @param shares    What from this group needs to be loaded.
      * @param profile   The player player that will need data loaded from.
      */
-    public void addToProfile(ProfileContainer container, Shares shares, PlayerProfile profile) {
-        this.getToProfiles().add(new DefaultPersistingProfile(container.getDataName(), shares, profile));
+    public final void addToProfile(ProfileContainer container, Shares shares, PlayerProfile profile) {
+        event.getToProfiles().add(new DefaultPersistingProfile(shares, profile));
     }
 
     /**
      * Finalizes the transfer from one world to another.  This handles the switching
      * inventories/stats for a player and persisting the changes.
      */
-    public void handleSharing() {
-        Logging.finer("=== " + this.getPlayer().getName() + " traveling from world: " + this.getFromWorld().getName()
-                + " to " + "world: " + this.getToWorld().getName() + " ===");
-        // Grab the player from the world they're coming from to save their stuff to every time.
-        WorldProfile fromWorldProfile = this.inventories.getWorldManager()
-                .getWorldProfile(this.getFromWorld().getName());
-        this.addFromProfile(fromWorldProfile, Sharables.allOf(),
-                fromWorldProfile.getPlayerData(this.getPlayer()));
+    public final void handleSharing() {
+        this.handle();
 
-        if (Perm.BYPASS_WORLD.hasBypass(this.getPlayer(), this.getToWorld().getName())) {
-            this.hasBypass = true;
-            completeSharing();
-            return;
+        Bukkit.getPluginManager().callEvent(event);
+        if (!event.isCancelled()) {
+            this.completeSharing();
         }
-
-        // Get any groups we need to save stuff to.
-        List<WorldGroupProfile> fromWorldGroups = this.inventories.getGroupManager()
-                .getGroupsForWorld(this.getFromWorld().getName());
-        for (WorldGroupProfile fromWorldGroup : fromWorldGroups) {
-            PlayerProfile profile = fromWorldGroup.getPlayerData(this.getPlayer());
-            if (!fromWorldGroup.containsWorld(this.getToWorld().getName())) {
-                this.addFromProfile(fromWorldGroup,
-                        Sharables.allOf(), profile);
-            } else {
-                if (!fromWorldGroup.getShares().isSharing(Sharables.all())) {
-                    Shares sharing = Sharables.complementOf(fromWorldGroup.getShares());
-                    this.addFromProfile(fromWorldGroup, Sharables.fromShares(sharing), profile);
-                }
-            }
-        }
-        if (fromWorldGroups.isEmpty()) {
-            Logging.finer("No groups for fromWorld.");
-        }
-
-        List<WorldGroupProfile> toWorldGroups = this.inventories.getGroupManager()
-                .getGroupsForWorld(this.getToWorld().getName());
-        if (!toWorldGroups.isEmpty()) {
-            // Get groups we need to load from
-            for (WorldGroupProfile toWorldGroup : toWorldGroups) {
-                if (Perm.BYPASS_GROUP.hasBypass(this.getPlayer(), toWorldGroup.getName())) {
-                    this.hasBypass = true;
-                } else {
-                    PlayerProfile profile = toWorldGroup.getPlayerData(this.getPlayer());
-                    if (!toWorldGroup.containsWorld(this.getFromWorld().getName())) {
-                        this.addToProfile(toWorldGroup,
-                                Sharables.allOf(), profile);
-                    } else {
-                        if (!toWorldGroup.getShares().isSharing(Sharables.all())) {
-                            Shares shares = Sharables.complementOf(toWorldGroup.getShares());
-                            this.addToProfile(toWorldGroup,
-                                    Sharables.fromShares(shares), profile);
-                        }
-                    }
-                }
-            }
-        } else {
-            // Get world we need to load from.
-            Logging.finer("No groups for toWorld.");
-            WorldProfile toWorldProfile = this.inventories.getWorldManager()
-                    .getWorldProfile(this.getToWorld().getName());
-            this.addToProfile(toWorldProfile, Sharables.allOf(),
-                    toWorldProfile.getPlayerData(this.getPlayer()));
-        }
-
-        this.completeSharing();
     }
 
-    private void completeSharing() {
-        Logging.finer("Travel affected by " + this.getFromProfiles().size() + " fromProfiles and "
-                + this.getToProfiles().size() + " toProfiles");
+    protected abstract void handle();
+
+    void completeSharing() {
+        Logging.finer("Change affected by " + event.getFromProfiles().size() + " fromProfiles and "
+                + event.getToProfiles().size() + " toProfiles");
         // This if statement should never happen, really.
-        if (this.getToProfiles().isEmpty()) {
+        if (event.getToProfiles().isEmpty()) {
             if (hasBypass) {
-                Logging.fine(this.getPlayer().getName() + " has bypass permission for 1 or more world/groups!");
+                Logging.fine(event.getPlayer().getName() + " has bypass permission for 1 or more world/groups!");
             } else {
                 Logging.finer("No toProfiles...");
             }
-            if (!this.getFromProfiles().isEmpty()) {
-                updateProfile(this.getFromProfiles().get(0));
+            if (!event.getFromProfiles().isEmpty()) {
+                updateProfile(inventories, event.getPlayer(), event.getFromProfiles().get(0));
             } else {
                 Logging.warning("No fromWorld to save to");
             }
-            Logging.finer("=== " + this.getPlayer().getName() + "'s travel handling complete! ===");
+            Logging.finer("=== " + event.getPlayer().getName() + "'s " + event.getCause() + " handling complete! ===");
             return;
         }
 
-        for (PersistingProfile persistingProfile : this.getFromProfiles()) {
-            updateProfile(persistingProfile);
+        for (PersistingProfile persistingProfile : event.getFromProfiles()) {
+            updateProfile(inventories, event.getPlayer(), persistingProfile);
         }
-        for (PersistingProfile persistingProfile : this.getToProfiles()) {
-            updatePlayer(persistingProfile);
+        for (PersistingProfile persistingProfile : event.getToProfiles()) {
+            updatePlayer(inventories, event.getPlayer(), persistingProfile);
         }
-        Logging.finer("=== " + this.getPlayer().getName() + "'s travel handling complete! ===");
+        Logging.finer("=== " + event.getPlayer().getName() + "'s " + event.getCause() + " handling complete! ===");
     }
 
-    private void updateProfile(PersistingProfile profile) {
+    static void updateProfile(final Inventories inventories, final Player player, final PersistingProfile profile) {
+        int debug = inventories.getMVIConfig().getGlobalDebug();
+        StringBuilder persisted = new StringBuilder();
         for (Sharable sharable : profile.getShares()) {
-            sharable.updateProfile(profile.getProfile(), this.getPlayer());
+            if (sharable.isOptional()) {
+                if (!inventories.getMVIConfig().getOptionalShares().contains(sharable)) {
+                    Logging.finest("Ignoring optional share: " + sharable.getNames()[0]);
+                    continue;
+                }
+                if (profile.getProfile().getContainerType() == ContainerType.WORLD && !inventories.getMVIConfig().usingOptionalsForUngrouped()) {
+                    Logging.finest("Ignoring optional share '" + sharable.getNames()[0] + "' for ungrouped world!");
+                    continue;
+                }
+            }
+            if (debug > 0) {
+                if (persisted.length() > 0) {
+                    persisted.append(", ");
+                }
+                persisted.append(sharable.getNames()[0]);
+            }
+            sharable.getHandler().updateProfile(profile.getProfile(), player);
         }
-        Logging.finest("Persisting: " + profile.getShares().toString() + " to "
-                + profile.getProfile().getType() + ":" + profile.getDataName()
-                + " for player " + profile.getProfile().getPlayer().getName());
-        this.inventories.getData().updatePlayerData(profile.getDataName(), profile.getProfile());
+        if (debug > 0) {
+            Logging.finer("Persisted: " + persisted.toString() + " to "
+                    + profile.getProfile().getContainerType() + ":" + profile.getProfile().getContainerName()
+                    + " (" + profile.getProfile().getProfileType() + ")"
+                    + " for player " + profile.getProfile().getPlayer().getName());
+        }
+        inventories.getData().updatePlayerData(profile.getProfile());
     }
 
-    private void updatePlayer(PersistingProfile profile) {
+    static void updatePlayer(final Inventories inventories, final Player player, final PersistingProfile profile) {
+        StringBuilder defaulted = new StringBuilder();
+        StringBuilder loaded = new StringBuilder();
+        player.closeInventory();
         for (Sharable sharable : profile.getShares()) {
-            sharable.updatePlayer(this.getPlayer(), profile.getProfile());
+            if (sharable.isOptional()) {
+                if (!inventories.getMVIConfig().getOptionalShares().contains(sharable)) {
+                    Logging.finest("Ignoring optional share: " + sharable.getNames()[0]);
+                    continue;
+                }
+                if (profile.getProfile().getContainerType() == ContainerType.WORLD && !inventories.getMVIConfig().usingOptionalsForUngrouped()) {
+                    Logging.finest("Ignoring optional share '" + sharable.getNames()[0] + "' for ungrouped world!");
+                    continue;
+                }
+            }
+            if (sharable.getHandler().updatePlayer(player, profile.getProfile())) {
+                if (loaded.length() > 0) {
+                    loaded.append(", ");
+                }
+                loaded.append(sharable.getNames()[0]);
+            } else {
+                if (defaulted.length() > 0) {
+                    defaulted.append(", ");
+                }
+                defaulted.append(sharable.getNames()[0]);
+            }
         }
-        Logging.finest("Updating " + profile.getShares().toString() + " for "
-                + profile.getProfile().getPlayer().getName() + "for "
-                + profile.getProfile().getType() + ":" + profile.getDataName());
+        if (!loaded.toString().isEmpty()) {
+            Logging.finer("Updated: " + loaded.toString() + " for "
+                    + profile.getProfile().getPlayer().getName() + " for "
+                    + profile.getProfile().getContainerType() + ":" + profile.getProfile().getContainerName()
+                    + " (" + profile.getProfile().getProfileType() + ")");
+        }
+        if (!defaulted.toString().isEmpty()) {
+            Logging.finer("Defaulted: " + defaulted.toString() + " for "
+                    + profile.getProfile().getPlayer().getName() + " for "
+                    + profile.getProfile().getContainerType() + ":" + profile.getProfile().getContainerName()
+                    + " (" + profile.getProfile().getProfileType() + ")");
+        }
     }
 }
 
